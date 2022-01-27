@@ -8,7 +8,17 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 import keyboards as kb
 import messages as ms
-import utils
+from aiogram.dispatcher.filters.state import State, StatesGroup
+
+
+class States(StatesGroup):
+    start = State()
+    onetimePass = State()
+    problem = State()
+    other = State()
+    address = State()
+    create_pass_from_other = State()
+
 
 load_dotenv()
 
@@ -20,37 +30,62 @@ dp.middleware.setup(LoggingMiddleware())
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     await message.answer(ms.start, reply_markup=kb.start_keyboard)
+    await States.start.set()
 
 
-@dp.message_handler(Text(equals="Разовый пропуск"))
+@dp.message_handler(Text(equals="Разовый пропуск"), state=States.start)
 async def process_one_time_pass(message: types.Message):
     await message.answer(ms.one_time_pass, reply_markup=kb.help_car_keyboard)
+    await States.onetimePass.set()
 
 
-@dp.message_handler(Text(equals="Сообщить о проблеме"))
+@dp.message_handler(Text(equals="Сообщить о проблеме"), state=States.start)
 async def process_problem(message: types.Message):
     await message.answer(ms.problem)
+    await States.problem.set()
 
 
-@dp.message_handler(Text(equals="Другое"))
+@dp.message_handler(state=States.problem)
+async def process_problem(message: types.Message):
+    await message.answer(ms.address_msg, reply_markup=kb.address_keyboard)
+    await States.address.set()
+
+
+@dp.message_handler(Text(equals="Другое"), state=States.start)
 async def process_other(message: types.Message):
-
     await message.answer(ms.other, reply_markup=kb.other_keyboard)
+    await States.other.set()
 
 
-@dp.message_handler(Text(equals="Выпустить пропуск"))
+@dp.message_handler(state=States.start)
+async def process_other(message: types.Message):
+    await message.answer("Пожалуйста, выберите из списка", reply_markup=kb.start_keyboard)
+
+
+@dp.message_handler(Text(equals="Выпустить пропуск"), state=States.other)
 async def process_issue_a_pass(message: types.Message):
     await message.answer(ms.issue_a_pass, reply_markup=kb.pass_keyboard)
+    await States.create_pass_from_other.set()
 
 
-@dp.message_handler(Text(equals="Автомобиля"))
+@dp.message_handler(state=States.other)
+async def process_other(message: types.Message):
+    await message.answer("Пожалуйста, выберите из списка", reply_markup=kb.other_keyboard)
+
+
+@dp.message_handler(Text(equals="Автомобиля"), state=States.create_pass_from_other)
 async def process_car_pass(message: types.Message):
     await message.answer(ms.car_pass, reply_markup=kb.help_car_keyboard)
 
 
-@dp.message_handler(Text(equals="Человека"))
+@dp.message_handler(Text(equals="Человека"), state=States.create_pass_from_other)
 async def process_human_pass(message: types.Message):
     await message.answer(ms.human_pass)
+
+
+@dp.message_handler(state=States.create_pass_from_other)
+async def process_other(message: types.Message):
+    await message.answer("Пожалуйста, выберите из списка", reply_markup=kb.pass_keyboard)
 
 
 @dp.message_handler(Text(equals="Временный"))
