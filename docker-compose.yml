@@ -1,0 +1,22 @@
+version: "3"
+services:
+  village_postgres:
+    container_name: village_postgres
+    restart: unless-stopped
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    ports:
+      - "5432:5432"
+  village_bot:
+    container_name: village_bot
+    restart: unless-stopped
+    environment:
+      TG_TOKEN: "${TG_TOKEN}"
+      POSTGRES_HOST: "${POSTGRES_HOST}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    build: ./

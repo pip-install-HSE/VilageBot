@@ -11,7 +11,7 @@ from aiogram.types import ReplyKeyboardRemove, \
     ReplyKeyboardMarkup, KeyboardButton, \
     InlineKeyboardMarkup, InlineKeyboardButton
 
-
+#проверка проверки
 class States(StatesGroup):
     start = State()
     onetimePass = State()
@@ -71,7 +71,7 @@ address_keyboard = ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=T
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
-    await message.answer("Добро пожаловать в бота! Выберите:", reply_markup=start_keyboard)
+    await message.answer("НЕДобро пожаловать в бота! Выберите:", reply_markup=start_keyboard)
     await States.start.set()
 
 
