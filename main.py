@@ -78,8 +78,14 @@ async def process_start_command(message: types.Message):
                          reply_markup=start_keyboard)
 
 
-# @dp.message_handler(lambda message: message.text and 'hello' in message.text.lower())
-# async def text_handler(message: types.Message):
+@dp.callback_query_handler(text='help_pass')
+async def inline_kb_answer_car(query: types.CallbackQuery):
+    await query.answer('Формат ввода: Иван Иванов')
+
+
+@dp.callback_query_handler(text='help_car')
+async def inline_kb_answer_car(query: types.CallbackQuery):
+    await query.answer('Формат ввода: a000aa')
 
 
 @dp.message_handler(Text(equals="Разовый пропуск") | Text(equals="Разовый"),
@@ -96,7 +102,8 @@ async def process_one_time_pass_name(message: types.Message):
     User.update(car=message.text).where(User.tg_id == message.from_user.id).execute()
     User.update(state="one_time_pass_name").where(User.tg_id == message.from_user.id).execute()
     await message.answer(
-        f"Назовите пропуск: {User.get(User.tg_id == message.from_user.id).state} {User.get(User.tg_id == message.from_user.id).car}")
+        f"Назовите пропуск: {User.get(User.tg_id == message.from_user.id).state} {User.get(User.tg_id == message.from_user.id).car}",
+        reply_markup=help_passname_keyboard)
 
 
 @dp.message_handler(lambda message: User.get(User.tg_id == message.from_user.id).state == "one_time_pass_name")
