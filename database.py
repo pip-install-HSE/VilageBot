@@ -14,6 +14,8 @@ db = PostgresqlDatabase(os.getenv('POSTGRES_DB'), port=5432,
 class User(Model):
     tg_id = IntegerField(primary_key=True)
     state = TextField(null=True)
+    car = TextField(null=True)
+    name = TextField(null=True)
     phone = TextField(null=True, unique=True)
     created_at = DateTimeField(default=datetime.now)
 
