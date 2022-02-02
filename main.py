@@ -70,11 +70,19 @@ address_keyboard = ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=T
     .add(my_house).add(other_address)
 
 
+def get_state(msg):
+    return User.get(User.tg_id == msg.from_user.id).state
+
+
+def set_state(state_, msg):
+    User.update(state=state_).where(User.tg_id == msg.from_user.id).execute()
+
+
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     user, _ = User.get_or_create(tg_id=message.from_user.id)
-    User.update(state="start").where(User.tg_id == user.tg_id).execute()
-    await message.answer(f"Добро пожаловать в бота! Выберите: {User.get(User.tg_id == message.from_user.id).state}",
+    set_state("start", message)
+    await message.answer(f"Добро пожаловать в бота! Выберите: {get_state(message)}",
                          reply_markup=start_keyboard)
 
 
@@ -85,124 +93,128 @@ async def inline_kb_answer_car(query: types.CallbackQuery):
 
 @dp.callback_query_handler(text='help_car')
 async def inline_kb_answer_car(query: types.CallbackQuery):
-    await query.answer('Формат ввода: a000aa')
+    await query.answer('Формат ввода: a000aa00')
 
 
 @dp.message_handler(Text(equals="Разовый пропуск") | Text(equals="Разовый"),
-                    lambda message: User.get(User.tg_id == message.from_user.id).state == "start" or
-                                    User.get(User.tg_id == message.from_user.id).state == "pass_type")
+                    lambda message: get_state(message) in ("start", "pass_type"))
 async def process_one_time_pass(message: types.Message):
-    User.update(state="one_time_pass").where(User.tg_id == message.from_user.id).execute()
-    await message.answer(f"Введите номер машины {User.get(User.tg_id == message.from_user.id).state}",
+    set_state("one_time_pass", message)
+    await message.answer(f"Введите номер машины {get_state(message)}",
                          reply_markup=help_car_keyboard)
 
 
-@dp.message_handler(lambda message: User.get(User.tg_id == message.from_user.id).state == "one_time_pass")
+
+@dp.message_handler(lambda message:   get_state(message) == "one_time_pass")
 async def process_one_time_pass_name(message: types.Message):
-    User.update(car=message.text).where(User.tg_id == message.from_user.id).execute()
-    User.update(state="one_time_pass_name").where(User.tg_id == message.from_user.id).execute()
-    await message.answer(
-        f"Назовите пропуск: {User.get(User.tg_id == message.from_user.id).state} {User.get(User.tg_id == message.from_user.id).car}",
-        reply_markup=help_passname_keyboard)
+    car = message.text.replace(' ', '').upper()
+    result = re.match(r'[А-Я]\d{3}[А-Я][А-Я]\d{2,3}', car)
+    if result:
+        User.update(car=car).where(User.tg_id == message.from_user.id).execute()
+        set_state("one_time_pass_name", message)
+        await message.answer(
+            f"{car}Назовите пропуск: {get_state(message)} {User.get(User.tg_id == message.from_user.id).car}",
+            reply_markup=help_passname_keyboard)
+    else:
+        await message.answer(f"Введите номер машины в соответствии с шаблоном {get_state(message)}",
+                             reply_markup=help_car_keyboard)
 
 
-@dp.message_handler(lambda message: User.get(User.tg_id == message.from_user.id).state == "one_time_pass_name")
+@dp.message_handler(lambda message: get_state(message) == "one_time_pass_name")
 async def process_one_time_pass_end(message: types.Message):
     # Занесение в бд пропуска
 
-    User.update(state="start").where(User.tg_id == message.from_user.id).execute()
+    set_state("start", message)
     await message.answer(
         f"Создан пропуска для: \n {User.get(User.tg_id == message.from_user.id).car}\nНа сегодня")
-    await message.answer(f"Добро пожаловать в бота! Выберите: {User.get(User.tg_id == message.from_user.id).state}",
+    await message.answer(f"Добро пожаловать в бота! Выберите: {get_state(message)}",
                          reply_markup=start_keyboard)
 
 
 @dp.message_handler(Text(equals="Сообщить о проблеме"),
-                    lambda message: User.get(User.tg_id == message.from_user.id).state == "start")
+                    lambda message: get_state(message) == "start")
 async def process_problem(message: types.Message):
-    User.update(state="problem").where(User.tg_id == message.from_user.id).execute()
-    await message.answer(f"Введите описание проблемы: {User.get(User.tg_id == message.from_user.id).state}")
+    set_state("problem", message)
+    await message.answer(f"Введите описание проблемы: {get_state(message)}")
 
 
 @dp.message_handler(Text(equals="Другое"),
-                    lambda message: User.get(User.tg_id == message.from_user.id).state == "start")
+                    lambda message: get_state(message) == "start")
 async def process_other(message: types.Message):
-    User.update(state="other").where(User.tg_id == message.from_user.id).execute()
-    await message.answer(f"Другое:{User.get(User.tg_id == message.from_user.id).state}",
+    set_state("other", message)
+    await message.answer(f"Другое:{get_state(message)}",
                          reply_markup=other_keyboard)
 
 
-@dp.message_handler(lambda message: User.get(User.tg_id == message.from_user.id).state == "start")
+@dp.message_handler(lambda message: get_state(message) == "start")
 async def process_start_incorrect_input(message: types.Message):
-    await message.answer(f"Пожалуйста, выберите из списка {User.get(User.tg_id == message.from_user.id).state}",
+    await message.answer(f"Пожалуйста, выберите из списка {get_state(message)}",
                          reply_markup=start_keyboard)
 
 
 @dp.message_handler(Text(equals="Выпустить пропуск"),
-                    lambda message: User.get(User.tg_id == message.from_user.id).state == "other")
+                    lambda message: get_state(message) == "other")
 async def process_issue_a_pass(message: types.Message):
-    User.update(state="issue_a_pass").where(User.tg_id == message.from_user.id).execute()
-    await message.answer(f"Пропуск для:{User.get(User.tg_id == message.from_user.id).state}",
+    set_state("issue_a_pass", message)
+    await message.answer(f"Пропуск для:{get_state(message)}",
                          reply_markup=pass_keyboard)
 
 
-@dp.message_handler(lambda message: User.get(User.tg_id == message.from_user.id).state == "other")
+@dp.message_handler(lambda message: get_state(message) == "other")
 async def process_other_incorrect_input(message: types.Message):
-    await message.answer(f"Пожалуйста, выберите из списка {User.get(User.tg_id == message.from_user.id).state}",
+    await message.answer(f"Пожалуйста, выберите из списка {get_state(message)}",
                          reply_markup=other_keyboard)
 
 
 @dp.message_handler(Text(equals="Автомобиля"),
-                    lambda message: User.get(User.tg_id == message.from_user.id).state == "issue_a_pass")
+                    lambda message: get_state(message) == "issue_a_pass")
 async def process_car_pass(message: types.Message):
-    User.update(state="issue_a_pass_car").where(User.tg_id == message.from_user.id).execute()
-    await message.answer(f"Введите номер авто: {User.get(User.tg_id == message.from_user.id).state}",
+    set_state("issue_a_pass_car", message)
+    await message.answer(f"Введите номер авто: {get_state(message)}",
                          reply_markup=help_car_keyboard)
 
 
-@dp.message_handler(lambda message: User.get(User.tg_id == message.from_user.id).state == "issue_a_pass_car")
+@dp.message_handler(lambda message: get_state(message) == "issue_a_pass_car")
 async def process_issue_a_pass_type(message: types.Message):
-    User.update(car=message.text).where(User.tg_id == message.from_user.id).execute()
-    User.update(state="pass_type").where(User.tg_id == message.from_user.id).execute()
+    User.update(car=message.text.upper()).where(User.tg_id == message.from_user.id).execute()
+    set_state("pass_type", message)
     await message.answer(
-        f"Тип пропуска {User.get(User.tg_id == message.from_user.id).state} {User.get(User.tg_id == message.from_user.id).car}",
+        f"Тип пропуска {get_state(message)} {User.get(User.tg_id == message.from_user.id).car}",
         reply_markup=do_pass_keyboard)
 
 
 @dp.message_handler(Text(equals="Человека"),
-                    lambda message: User.get(User.tg_id == message.from_user.id).state == "issue_a_pass")
+                    lambda message: get_state(message) == "issue_a_pass")
 async def process_human_pass(message: types.Message):
-    User.update(state="issue_a_pass_human").where(User.tg_id == message.from_user.id).execute()
-    await message.answer(f"Введите имя и фамилию: {User.get(User.tg_id == message.from_user.id).state}")
+    set_state("issue_a_pass_human", message)
+    await message.answer(f"Введите имя и фамилию: {get_state(message)}")
 
 
-@dp.message_handler(lambda message: User.get(User.tg_id == message.from_user.id).state == "issue_a_pass_human")
+@dp.message_handler(lambda message: get_state(message) == "issue_a_pass_human")
 async def process_issue_a_pass_type(message: types.Message):
     User.update(name=message.text).where(User.tg_id == message.from_user.id).execute()
-    User.update(state="pass_type").where(User.tg_id == message.from_user.id).execute()
+    set_state("pass_type", message)
     await message.answer(
-        f"Тип пропуска {User.get(User.tg_id == message.from_user.id).state} {User.get(User.tg_id == message.from_user.id).name}",
+        f"Тип пропуска {get_state(message)} {User.get(User.tg_id == message.from_user.id).name}",
         reply_markup=do_pass_keyboard)
 
 
-@dp.message_handler(lambda message: User.get(User.tg_id == message.from_user.id).state == "issue_a_pass")
+@dp.message_handler(lambda message: get_state(message) == "issue_a_pass")
 async def process_issue_a_pass_incorrect_input(message: types.Message):
     await message.answer("Пожалуйста, выберите из списка",
                          reply_markup=pass_keyboard)
 
 
 @dp.message_handler(Text(equals="Временный"),
-                    lambda message: User.get(User.tg_id == message.from_user.id).state == "issue_a_pass_human" or
-                                    User.get(User.tg_id == message.from_user.id).state == "issue_a_pass_car")
+                    lambda message: get_state(message) in ("issue_a_pass_human", "issue_a_pass_car"))
 async def process_time_pass(message: types.Message):
-    User.update(state="time_pass").where(User.tg_id == message.from_user.id).execute()
+    set_state("time_pass", message)
     await message.answer("Выбор даты начала:",
                          reply_markup=date_keyboard)
 
 
 @dp.message_handler(Text(equals="Постоянный"),
-                    lambda message: User.get(
-                        User.tg_id == message.from_user.id).state == "issue_a_pass_human" | "issue_a_pass_car")
+                    lambda message: get_state(message) in ("issue_a_pass_human", "issue_a_pass_car"))
 async def process_full_time_pass(message: types.Message):
     await message.answer(f"Создан пропуск для: {message.from_user.first_name}")
 
