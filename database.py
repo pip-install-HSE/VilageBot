@@ -17,6 +17,8 @@ class User(Model):
     car = TextField(null=True)
     name = TextField(null=True)
     phone = TextField(null=True, unique=True)
+    pass_start = DateField()
+    pass_end = DateField()
     created_at = DateTimeField(default=datetime.now)
 
     class Meta:
