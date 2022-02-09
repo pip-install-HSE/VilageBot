@@ -317,10 +317,33 @@ async def process_time_pass_today_or_tomorrow(message: types.Message):
         User.update(pass_start=day).where(User.tg_id == message.from_user.id).execute()
         await message.answer("Выберите дату окончания:",
                              reply_markup=ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-                             .add(KeyboardButton("Сегодня"))
                              .add(KeyboardButton("Завтра"))
                              .add(KeyboardButton("Другая дата"))
                              )
+
+
+@dp.message_handler(lambda message: get_state(message) in ("today_time_pass", "tomorrow_time_pass"),
+                    Text(equals="Завтра"))
+async def process_time_pass_tomorrow_end(message: types.Message):
+    set_state("finishing_time_pass", message)
+    day = date.today()  # Следующий день надо поставить
+    User.update(pass_start=day).where(User.tg_id == message.from_user.id).execute()
+    await message.answer("Введите название для пропуска",
+                         reply_markup=InlineKeyboardMarkup()
+                         .add(InlineKeyboardButton("Подсказка!", callback_data='help_pass'))
+                         )
+
+
+@dp.message_handler(lambda message: get_state(message) == "finishing_time_pass")
+async def process_time_pass_finishing(message: types.Message):
+    set_state("start", message)
+    await message.answer("Заканчиваем")  # Необходимо доделать
+
+
+@dp.message_handler(lambda message: get_state(message) == "time_pass",
+                    Text(equals="Другая дата"))
+async def process_other_date(message: types.Message):
+    await message.answer("Раздел в разработке, выберите сегодня или завтра.")
 
 
 @dp.message_handler(lambda message: get_state(message) in ("issue_a_pass_human", "issue_a_pass_car"),
@@ -360,6 +383,21 @@ async def process_problem(message: types.Message):
                          .add(KeyboardButton("Моё местоположение"))
                          .add(KeyboardButton("Другой адрес"))
                          )
+
+
+@dp.message_handler(lambda message: get_state(message) == "time_pass")
+async def process_time_pass_incorrect_input(message: types.Message):
+    await message.answer("Пожалуйста, выберите из списка:",
+                         reply_markup=ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
+                         .add(KeyboardButton("Сегодня"))
+                         .add(KeyboardButton("Завтра"))
+                         .add(KeyboardButton("Другая дата"))
+                         )
+
+
+@dp.message_handler(lambda message: get_state(message) in ("today_time_pass", "tomorrow_time_pass"))
+async def process_incorrect_input(message: types.Message):
+    await message.answer("Пожалуйста, выберите из списка:")
 
 
 if __name__ == '__main__':
