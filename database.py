@@ -14,12 +14,15 @@ db = PostgresqlDatabase(os.getenv('POSTGRES_DB'), port=5432,
 class User(Model):
     tg_id = IntegerField(primary_key=True)
     state = TextField(null=True)
-    car = TextField(null=True)
-    name = TextField(null=True)
+    last_inline_message = IntegerField(default=1)
+    time_pass_car = TextField(null=True)
+    time_pass_name = TextField(null=True)
     phone = TextField(null=True, unique=True)
     pass_start = DateField()
     pass_end = DateField()
-    created_at = DateTimeField(default=datetime.now)
+    pass_who = IntegerField()
+    pass_who_show = TextField()
+    pass_name = TextField(null=True)
 
     class Meta:
         database = db
